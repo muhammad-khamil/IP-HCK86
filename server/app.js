@@ -8,6 +8,7 @@ const cors = require('cors')
 const { errorHandler } = require('./middleware/errorHandler')
 const { authentication } = require('./middleware/authentication')
 const { authorization } = require('./middleware/authorization')
+const { uploadSPPDImages } = require('./middleware/multer')
 const Controller = require('./controllers/Controller')
 
 app.use(cors())
@@ -20,11 +21,11 @@ app.post('/login', Controller.login)
 // SPPD routes - require authentication
 app.use(authentication)
 
-// SPPD CRUD
-app.post('/sppd', Controller.createSPPD)
+// SPPD CRUD - Support both file upload
+app.post('/sppd', uploadSPPDImages, Controller.createSPPD)
 app.get('/sppd', Controller.getSPPDs)
 app.get('/sppd/:id', Controller.getSPPDById)
-app.put('/sppd/:id', Controller.updateSPPD)
+app.put('/sppd/:id', uploadSPPDImages, Controller.updateSPPD)
 app.delete('/sppd/:id', Controller.deleteSPPD)
 
 // Admin only - Update SPPD status
