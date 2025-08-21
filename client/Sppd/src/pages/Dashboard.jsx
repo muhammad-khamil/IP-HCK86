@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router'
 import http from '../libraries/http'
 import Swal from 'sweetalert2'
+import ChatBot from './ChatBot'
 
 export default function Dashboard() {
     const navigate = useNavigate()
@@ -13,6 +14,9 @@ export default function Dashboard() {
     })
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
+    
+    // State untuk ChatBot
+    const [isChatBotOpen, setIsChatBotOpen] = useState(false)
 
     const fetchDashboardData = async () => {
         try {
@@ -78,6 +82,20 @@ export default function Dashboard() {
                 Swal.fire("Success", "Logout berhasil!", "success")
                 navigate('/login')
             }
+        })
+    }
+
+    // Function untuk buka ChatBot
+    const handleOpenChatBot = () => {
+        setIsChatBotOpen(true)
+        Swal.fire({
+            title: 'AI Assistant Activated! 🤖',
+            text: 'ChatBot SPPD siap membantu Anda!',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
         })
     }
 
@@ -203,13 +221,22 @@ export default function Dashboard() {
                             <p className="font-medium text-green-800">Lihat SPPD</p>
                         </Link>
 
-                        <button className="bg-yellow-50 hover:bg-yellow-100 p-4 rounded-lg text-center transition-colors">
-                            <div className="text-yellow-600 mb-2">
+                        {/* TOMBOL CHAT BOT - GANTI DARI LAPORAN */}
+                        <button 
+                            onClick={handleOpenChatBot}
+                            className="bg-purple-50 hover:bg-purple-100 p-4 rounded-lg text-center transition-colors group"
+                        >
+                            <div className="text-purple-600 mb-2 group-hover:scale-110 transition-transform">
                                 <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H9a2 2 0 01-2-2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
                             </div>
-                            <p className="font-medium text-yellow-800">Laporan</p>
+                            <p className="font-medium text-purple-800">
+                                🤖 AI Assistant
+                                {isChatBotOpen && (
+                                    <span className="block text-xs text-purple-600 mt-1">Active</span>
+                                )}
+                            </p>
                         </button>
 
                         {/* HANYA SHOW ADMIN PANEL KALAU ROLE ADMIN */}
@@ -225,6 +252,29 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* ChatBot Status Info */}
+                {isChatBotOpen && (
+                    <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="text-purple-600 mr-3">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-purple-800 font-medium">🤖 AI Assistant Active</p>
+                                    <p className="text-purple-600 text-sm">ChatBot SPPD siap membantu analisis perjalanan dinas Anda!</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-green-600 text-sm font-medium">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Admin Notice (kalau user adalah admin) */}
                 {user?.role === 'admin' && (
@@ -243,6 +293,9 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
+            
+            {/* ChatBot Component - Hanya render kalau diaktifkan */}
+            {isChatBotOpen && <ChatBot onClose={() => setIsChatBotOpen(false)} />}
         </div>
     )
 }

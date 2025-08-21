@@ -17,6 +17,8 @@ app.use(express.urlencoded({ extended: true }))
 
 app.post('/register', Controller.register)
 app.post('/login', Controller.login)
+app.post('/auth/google-login', Controller.googleLogin)
+
 
 // SPPD routes - require authentication
 app.use(authentication)
@@ -27,6 +29,8 @@ app.get('/sppd', Controller.getSPPDs)
 app.get('/sppd/:id', Controller.getSPPDById)
 app.put('/sppd/:id', uploadSPPDImages, Controller.updateSPPD)
 app.delete('/sppd/:id', Controller.deleteSPPD)
+app.post('/ai/chat', Controller.chatWithAI)
+app.delete('/ai/chat/history', Controller.clearChatHistory)
 
 // Admin only - Update SPPD status
 app.patch('/sppd/:id/status', authorization(['admin']), Controller.updateSPPDStatus)
@@ -35,7 +39,7 @@ app.patch('/sppd/:id/status', authorization(['admin']), Controller.updateSPPDSta
 app.get('/profile', Controller.getProfile)
 
 // Admin dashboard
-app.get('/dashboard/stats', authorization(['admin']), Controller.getDashboardStats)
+app.get('/dashboard/stats', authorization(['admin', 'staff']), Controller.getDashboardStats)
 
 // Admin - Get all staff
 app.get('/staff', authorization(['admin']), Controller.getAllStaff)

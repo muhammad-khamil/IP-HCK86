@@ -2,6 +2,7 @@ const { comparePassword } = require('../helpers/bcrypt')
 const { signToken } = require('../helpers/jwt')
 const { uploadBufferToCloudinary, deleteFromCloudinary, extractPublicId } = require('../helpers/cloudinary')
 const { User, SPPD } = require('../models/')
+const { OAuth2Client } = require('google-auth-library');
 
 // Helper function untuk parse tanggal format Indonesia
 function parseIndonesianDate(dateStr) {
@@ -57,6 +58,51 @@ class Controller {
                 name: user.name,
                 email: user.email
             })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    static async googleLogin(req, res, next) {
+        try {
+            const { googleToken } = req.body
+            if (!googleToken) throw { name: "BadRequest", message: "Google Token is required" }
+
+
+            // Create instance of OAuth2Client
+            const client = new OAuth2Client();
+
+            // Verify the token
+            // Note: You need to set your Google Client ID in the environment variable GOOGLE_CLIENT_ID
+            const ticket = await client.verifyIdToken({
+                idToken: googleToken,
+                audience: process.env.GOOGLE_CLIENT_ID
+            })
+
+            // Get the user information from the token
+            const payload = ticket.getPayload()
+            console.log(payload, "<<<");
+
+
+            // bikin user if not exists karena untuk bikin token kita butuh user id
+            const randomPassword = payload.sub + Date.now().toString() + Math.random().toString(36).substring(2, 15) // generate a random password
+            const [user, created] = await User.findOrCreate({
+                where: { email: payload.email },
+                defaults: {
+                    email: payload.email,
+                    name: payload.name,
+                    password: randomPassword,
+                    role: 'staff'
+                }
+            })
+
+            const access_token = signToken({ id: user.id, role: user.role })
+
+            res.status(created ? 201 : 200).json({
+                access_token,
+                role: user.role,
+                name: user.name
+            });
         } catch (error) {
             next(error)
         }
@@ -505,24 +551,36 @@ class Controller {
 
     // Admin dashboard - Get statistics
     static async getDashboardStats(req, res, next) {
-        try {
-            const totalSPPD = await SPPD.count()
-            const pendingSPPD = await SPPD.count({ where: { status: 'pending' } })
-            const approvedSPPD = await SPPD.count({ where: { status: 'approved' } })
-            const rejectedSPPD = await SPPD.count({ where: { status: 'rejected' } })
-            const totalStaff = await User.count({ where: { role: 'staff' } })
-
-            res.status(200).json({
-                totalSPPD,
-                pendingSPPD,
-                approvedSPPD,
-                rejectedSPPD,
-                totalStaff
-            })
-        } catch (error) {
-            next(error)
+    try {
+        const { id: userId, role } = req.user
+        
+        let whereClause = {}
+        
+        // Kalau bukan admin, filter by userId
+        if (role !== 'admin') {
+            whereClause.userId = userId
         }
+
+        // Ambil semua SPPD sesuai role
+        const sppds = await SPPD.findAll({
+            where: whereClause,
+            attributes: ['id', 'status']  // Cuma ambil yang dibutuhin
+        })
+
+        const stats = {
+            totalSPPD: sppds.length,
+            pendingSPPD: sppds.filter(s => s.status === 'pending').length,
+            approvedSPPD: sppds.filter(s => s.status === 'approved').length,
+            rejectedSPPD: sppds.filter(s => s.status === 'rejected').length
+        }
+
+        res.status(200).json(stats)
+
+    } catch (error) {
+        console.error('Dashboard stats error:', error)
+        next(error)
     }
+}
 
     // Admin only - Get all staff
     static async getAllStaff(req, res, next) {
@@ -535,6 +593,56 @@ class Controller {
 
             res.status(200).json(staff)
         } catch (error) {
+            next(error)
+        }
+    }
+
+    // server/controllers/Controller.js
+    // Tambah method sederhana
+
+    static async chatWithAI(req, res, next) {
+        try {
+            const { message } = req.body
+            const { id: userId } = req.user
+
+            if (!message || message.trim().length === 0) {
+                throw { name: "Bad Request", message: "Pesan tidak boleh kosong" }
+            }
+
+            if (message.length > 1000) {
+                throw { name: "Bad Request", message: "Pesan terlalu panjang, maksimal 1000 karakter" }
+            }
+
+            const geminiChatbot = require('../helpers/gemini')
+
+            const result = await geminiChatbot.generateResponse(userId, message.trim())
+
+            res.status(200).json({
+                success: result.success,
+                message: result.response,
+                chatCount: result.chatCount || 0
+            })
+
+        } catch (error) {
+            console.error('Chat AI Error:', error)
+            next(error)
+        }
+    }
+
+    static async clearChatHistory(req, res, next) {
+        try {
+            const { id: userId } = req.user
+            const geminiChatbot = require('../helpers/gemini')
+
+            const result = geminiChatbot.clearHistory(userId)
+
+            res.status(200).json({
+                success: true,
+                message: result
+            })
+
+        } catch (error) {
+            console.error('Clear Chat Error:', error)
             next(error)
         }
     }
