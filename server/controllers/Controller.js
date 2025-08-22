@@ -551,36 +551,50 @@ class Controller {
 
     // Admin dashboard - Get statistics
     static async getDashboardStats(req, res, next) {
-    try {
-        const { id: userId, role } = req.user
-        
-        let whereClause = {}
-        
-        // Kalau bukan admin, filter by userId
-        if (role !== 'admin') {
-            whereClause.userId = userId
+        try {
+            const { id: userId, role } = req.user
+
+            let whereClause = {}
+
+            // Kalau bukan admin, filter by userId
+            if (role !== 'admin') {
+                whereClause.userId = userId
+            }
+
+            // Ambil semua SPPD sesuai role
+            const sppds = await SPPD.findAll({
+                where: whereClause,
+                attributes: ['id', 'status']
+            })
+
+            // ✅ TAMBAH: Count total staff dari User table
+            let totalStaff = 0
+            if (role === 'admin') {
+                // Admin: count semua staff di sistem
+                totalStaff = await User.count({
+                    where: { role: 'staff' }
+                })
+            } else {
+                // Staff: always 1 (diri sendiri)  
+                totalStaff = 1
+            }
+
+            const stats = {
+                totalSPPD: sppds.length,
+                pendingSPPD: sppds.filter(s => s.status === 'pending').length,
+                approvedSPPD: sppds.filter(s => s.status === 'approved').length,
+                rejectedSPPD: sppds.filter(s => s.status === 'rejected').length,
+                totalStaff: totalStaff  // ✅ TAMBAH INI!
+            }
+
+            res.status(200).json(stats)
+
+        } catch (error) {
+            console.error('Dashboard stats error:', error)
+            next(error)
         }
-
-        // Ambil semua SPPD sesuai role
-        const sppds = await SPPD.findAll({
-            where: whereClause,
-            attributes: ['id', 'status']  // Cuma ambil yang dibutuhin
-        })
-
-        const stats = {
-            totalSPPD: sppds.length,
-            pendingSPPD: sppds.filter(s => s.status === 'pending').length,
-            approvedSPPD: sppds.filter(s => s.status === 'approved').length,
-            rejectedSPPD: sppds.filter(s => s.status === 'rejected').length
-        }
-
-        res.status(200).json(stats)
-
-    } catch (error) {
-        console.error('Dashboard stats error:', error)
-        next(error)
     }
-}
+
 
     // Admin only - Get all staff
     static async getAllStaff(req, res, next) {
