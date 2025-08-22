@@ -1,0 +1,7 @@
+const app = require('../app')
+const port = process.env.PORT || 3000
+
+// app listener
+app.listen(port, () => {
+  console.log(`Server can be access in http://localhost:${port}`);
+})
