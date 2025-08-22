@@ -8,6 +8,7 @@ export default function SPPDDetail() {
   const navigate = useNavigate()
   const [sppd, setSppd] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState(null)
 
   const fetchSPPDDetail = async () => {
     try {
@@ -19,6 +20,15 @@ export default function SPPDDetail() {
       }
 
       http.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+      // ✅ TAMBAH: Get user profile untuk check role
+      try {
+        const { data: userProfile } = await http.get('/profile')
+        setUserRole(userProfile.role)
+      } catch (profileError) {
+        console.error("Profile fetch error:", profileError)
+      }
+
       const { data } = await http.get(`/sppd/${id}`)
       setSppd(data)
     } catch (error) {
@@ -29,13 +39,30 @@ export default function SPPDDetail() {
         navigate('/login')
       } else if (error.response?.status === 404) {
         Swal.fire("Error", "SPPD tidak ditemukan", "error")
-        navigate('/sppd')
+        // ✅ DYNAMIC BACK: Balik sesuai role
+        navigate(userRole === 'admin' ? '/admin' : '/sppd')
       } else {
         Swal.fire("Error", error.response?.data?.message || "Gagal memuat detail SPPD", "error")
       }
     } finally {
       setLoading(false)
     }
+  }
+
+  // ✅ TAMBAH: Dynamic back URL based on role
+  const getBackUrl = () => {
+    if (userRole === 'admin') {
+      return '/admin'
+    }
+    return '/dashboard'
+  }
+
+  // ✅ TAMBAH: Dynamic back label
+  const getBackLabel = () => {
+    if (userRole === 'admin') {
+      return '← Admin Dashboard'
+    }
+    return '← Dashboard'
   }
 
   const getStatusBadge = (status) => {
@@ -109,7 +136,7 @@ export default function SPPDDetail() {
         try {
           await http.delete(`/sppd/${id}`)
           Swal.fire("Success", "SPPD berhasil dihapus!", "success")
-          navigate('/sppd')
+          navigate(getBackUrl())
         } catch (error) {
           Swal.fire("Error", error.response?.data?.message || "Gagal menghapus SPPD", "error")
         }
@@ -157,11 +184,12 @@ export default function SPPDDetail() {
             <p className="text-gray-600">Informasi lengkap Surat Perintah Perjalanan Dinas</p>
           </div>
           <div className="flex gap-3">
+            {/* ✅ DYNAMIC BACK BUTTON */}
             <Link
-              to="/sppd"
+              to={getBackUrl()}
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
             >
-              <span>←</span> Kembali
+              {getBackLabel()}
             </Link>
             <button
               onClick={handlePrint}
@@ -195,7 +223,7 @@ export default function SPPDDetail() {
 
         {/* Main Content - Table Format */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          
+
           {/* Section 1: Informasi Umum */}
           <div className="border-b border-gray-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -356,14 +384,14 @@ export default function SPPDDetail() {
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {sppd.imgTiket ? (
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={sppd.imgTiket} 
-                            alt="Bukti Tiket" 
+                          <img
+                            src={sppd.imgTiket}
+                            alt="Bukti Tiket"
                             className="w-16 h-16 object-cover rounded-lg border"
                           />
-                          <a 
-                            href={sppd.imgTiket} 
-                            target="_blank" 
+                          <a
+                            href={sppd.imgTiket}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-500 text-sm"
                           >
@@ -424,14 +452,14 @@ export default function SPPDDetail() {
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {sppd.imgBill ? (
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={sppd.imgBill} 
-                            alt="Bukti Bill Hotel" 
+                          <img
+                            src={sppd.imgBill}
+                            alt="Bukti Bill Hotel"
                             className="w-16 h-16 object-cover rounded-lg border"
                           />
-                          <a 
-                            href={sppd.imgBill} 
-                            target="_blank" 
+                          <a
+                            href={sppd.imgBill}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-500 text-sm"
                           >
